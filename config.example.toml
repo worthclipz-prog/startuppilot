@@ -1,0 +1,57 @@
+# Copy to config.toml and edit. config.toml is git-ignored.
+# Environment variables (and .env) override anything set here.
+
+[model]
+# provider picks the endpoint for you: "openai", "gemini", "openrouter", "ollama".
+# (Or set base_url yourself for anything else.)
+provider = "openai"
+name = "gpt-4o"                             # must support tool calling + images
+# vision_name = "gpt-4o"                    # optional: different model for screenshot steps
+temperature = 0.0
+max_steps = 40
+
+# One key, or several. The first is primary; the rest are used automatically
+# when a key is rate-limited or out of quota. Better to keep keys in .env.
+# api_key  = "..."
+# api_keys = ["key1", "key2", "key3"]
+
+# --- Google Gemini (has a free tier) ---
+#   provider = "gemini"
+#   name     = "gemini-2.0-flash"           # a fast model; good for low rate limits
+#   api_keys = ["your-gemini-key", "a-second-gemini-key"]
+#
+# --- Local model (no per-call cost), e.g. Ollama ---
+#   provider = "ollama"
+#   name     = "qwen2.5vl:7b"               # needs vision + tool calling
+
+[behaviour]
+auto_approve = false   # true = run shell commands / file writes without asking
+
+# Phone / remote control panel (pilot --serve).
+[server]
+host = "127.0.0.1"     # use "0.0.0.0" to reach it over the network (then rely on the token)
+port = 8080
+# token = "set-a-long-random-string"   # better to set PILOT_SERVER_TOKEN in .env
+
+[browser]
+engine = "chromium"              # chromium | firefox | webkit
+# channel = "chrome"             # drive your installed Chrome ("msedge" for Edge)
+# Any other Chromium-based browser: point at its executable (engine stays "chromium").
+#   Windows Brave: executable_path = 'C:\Program Files\BraveSoftware\Brave-Browser\Application\brave.exe'
+#   Linux Brave:   executable_path = "/usr/bin/brave-browser"
+# For Firefox: engine = "firefox" (uses Playwright's patched Firefox build).
+headless = false
+user_data_dir = "browser-profile" # keeps cookies and logins between runs
+viewport_width = 1280
+viewport_height = 800
+nav_timeout_ms = 30000
+
+# Logins the agent can use. The model refers to them by name only and
+# never sees the values.
+[secrets.gmail]
+username = "you@gmail.com"
+password = "change-me"
+
+# [secrets.github]
+# username = "you"
+# password = "change-me"
