@@ -1,0 +1,3 @@
+/* Stage-only tweaks for the real popup. Keep this tiny: the goal is to show
+   the popup exactly as the extension ships it. */
+html { scrollbar-width: thin; scrollbar-color: rgba(255,255,255,.25) transparent; }
