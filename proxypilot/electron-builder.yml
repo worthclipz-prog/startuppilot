@@ -1,0 +1,37 @@
+appId: com.proxypilot.desktop
+productName: ProxyPilot
+copyright: Copyright © 2026 ProxyPilot
+directories:
+  output: release
+  buildResources: desktop/assets
+files:
+  - dist/**
+  - public/**
+  - package.json
+# Playwright's installer runs as a separate script, which can't execute from inside the app archive.
+asarUnpack:
+  - node_modules/playwright-core/**
+npmRebuild: false
+# No auto-updater: don't generate update feeds (a GH_TOKEN in the environment would otherwise switch them on).
+publish: null
+win:
+  target:
+    - target: nsis
+      arch: [x64]
+  icon: desktop/assets/icon.ico
+nsis:
+  oneClick: false
+  perMachine: false
+  allowToChangeInstallationDirectory: true
+  createDesktopShortcut: true
+  createStartMenuShortcut: true
+  shortcutName: ProxyPilot
+  # Uninstalling keeps profiles and cookies in %APPDATA%\ProxyPilot so a reinstall picks them up.
+  deleteAppDataOnUninstall: false
+  artifactName: ProxyPilot-Setup-${version}.exe
+linux:
+  target: dir
+  executableName: proxypilot
+  icon: desktop/assets/icon.png
+mac:
+  icon: desktop/assets/icon.png

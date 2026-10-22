@@ -41,10 +41,10 @@ export interface Profile {
   createdAt: string;
 }
 
-export type BrowserEngine = 'chromium' | 'chrome' | 'msedge';
+export type BrowserEngine = 'auto' | 'chromium' | 'chrome' | 'msedge';
 
 export interface Settings {
-  /** chromium = Playwright's bundled build; chrome/msedge = the copy installed on this computer. */
+  /** auto = Chrome, else Edge, else chromium (Playwright's downloadable build). */
   browser: BrowserEngine;
   /** Overrides `browser` when set. */
   executablePath: string;

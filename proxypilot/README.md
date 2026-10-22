@@ -13,7 +13,17 @@ Upload a list of proxies and ProxyPilot turns each one into its own isolated bro
 | **Its own device traits** | Each profile gets a fixed number of CPU cores and amount of RAM, so the profiles don't all look like the same machine. |
 | **No leaks or automation flags** | WebRTC is blocked from revealing your real IP. There's no "controlled by automated software" bar, and `navigator.webdriver` is `false`. |
 
-## Install (Windows, macOS or Linux)
+## Install on Windows (desktop app)
+
+1. Download **`ProxyPilot-Setup-<version>.exe`**. Every push to this repository builds it on a Windows machine: open the repository's **Actions** tab, pick the latest green **ProxyPilot desktop** run, and download **ProxyPilot-Setup-windows** under *Artifacts* (it arrives as a zip containing the `.exe`).
+2. Run it. The installer isn't code-signed, so Windows SmartScreen may say *"Windows protected your PC"*. Click **More info → Run anyway**.
+3. Choose where to install (no administrator rights needed). This creates Start menu and desktop shortcuts. Open **ProxyPilot** from either.
+
+The proxy browsers open in **Google Chrome** if it's installed, otherwise in **Microsoft Edge**, which comes with Windows, so there's nothing else to install. You can change this in **Settings**. You can also download a separate built-in Chromium from there.
+
+Closing the ProxyPilot window closes all its proxy browsers; it asks first if any are open. Profiles, cookies and settings are kept in `%APPDATA%\ProxyPilot\data`. Uninstalling (Settings → Apps) leaves them there, so reinstalling picks them up; delete that folder to remove them for good.
+
+## Or run from source (Windows, macOS or Linux)
 
 1. Install **Node.js 22 LTS** from <https://nodejs.org> (20.18 or newer works).
 2. Open a terminal in this `proxypilot` folder and run:
@@ -22,15 +32,16 @@ Upload a list of proxies and ProxyPilot turns each one into its own isolated bro
    npm install
    ```
 
-   This also downloads a private copy of Chromium (about 150 MB). If you'd rather use your installed Google Chrome or Edge, pick it later in **Settings**.
+   This also downloads a private copy of Chromium (about 150 MB), used when Chrome and Edge aren't installed.
 
-3. Start it:
+3. Start it, either as a desktop window or in your normal browser:
 
    ```bash
-   npm start
+   npm run desktop   # desktop window (same as the installed app)
+   npm start         # control panel at http://127.0.0.1:4800 in your normal browser
    ```
 
-   The control panel opens in your normal browser at <http://127.0.0.1:4800>. Keep the terminal open while you work. **Ctrl+C** closes all the proxy browsers and stops the app.
+   With `npm start`, keep the terminal open while you work. **Ctrl+C** closes all the proxy browsers and stops the app.
 
 ## Using it
 
@@ -58,7 +69,7 @@ Upload a list of proxies and ProxyPilot turns each one into its own isolated bro
 
 | Setting | What it does |
 |---|---|
-| Browser | Built-in Chromium, or your installed Google Chrome / Microsoft Edge. *Custom browser path* overrides this. |
+| Browser | *Automatic* uses Google Chrome if installed, else Microsoft Edge, else the built-in Chromium (with a **Download** button if it's missing). Or pick one. *Custom browser path* overrides this. |
 | Max open browsers | Upper limit on windows open at the same time (default 20). Extra launches are refused with a message. |
 | Launch at once | How many browsers start in parallel (default 4). Lower it if your PC struggles. |
 | Screen width / height | Your screen size, used to tile windows. When there are too many to fit, windows stack in offset layers. |
@@ -73,34 +84,47 @@ Each open browser uses roughly 200–400 MB of RAM, more on heavy sites. As a ro
 
 ## Good to know
 
-- **Where data lives:** `proxypilot/data/`. `profiles.json` holds your proxy list *including passwords in plain text*, and `browser-profiles/` holds each profile's cookies. Keep this folder private. Deleting a profile in the app erases its browser data.
+- **Where data lives:** `%APPDATA%\ProxyPilot\data` for the desktop app, `proxypilot/data/` when run from source. `profiles.json` holds your proxy list *including passwords in plain text*, and `browser-profiles/` holds each profile's cookies. Keep this folder private. Deleting a profile in the app erases its browser data.
 - **The control panel is local only.** It listens on `127.0.0.1` and refuses requests from other websites or other computers.
+- **Page titles in the table aren't links** on purpose. Opening a site in the panel would load it through your real connection.
 - **IP lookups** go through each proxy to free services (ip-api.com, with ipwho.is and ipinfo.io as fallbacks).
 - **What isn't disguised:** all profiles run on your own PC, so they share its graphics card (canvas/WebGL), installed fonts and screen size. Hiding those takes deeper browser modifications, which commercial anti-detect browsers ship.
 - Follow the terms of service of the sites you visit and the laws where you are.
 
 ## Troubleshooting
 
-- **"Browser not installed"**: run `npx playwright install chromium`, or choose Google Chrome in Settings.
+- **"Built-in Chromium is not downloaded yet"**: open **Settings** and click **Download built-in Chromium**, or pick Chrome or Edge.
+- **"Google Chrome is not installed"**: choose *Automatic* or *Microsoft Edge* in Settings.
 - **"Port 4800 is already in use"**: ProxyPilot is probably already running. To use another port: `PORT=4801 npm start` (macOS/Linux), `$env:PORT=4801; npm start` (PowerShell) or `set PORT=4801 && npm start` (cmd).
 - **A proxy shows "Wrong proxy username or password"**: check the line format. With `host:port:user:pass`, the host comes first.
-- **Panel says "Engine offline"**: the terminal running `npm start` was closed. Start it again; your profiles are kept.
+- **Panel says "Engine offline"**: the app (or the terminal running `npm start`) was closed. Start it again; your profiles are kept.
 
 ## Development
 
 ```bash
-npm test          # unit tests + end-to-end test with real (headless) Chromium and fake proxies
+npm test               # unit tests + end-to-end test with real (headless) Chrome/Chromium and fake proxies
 npm run typecheck
-npm run dev       # restart on file changes
+npm run dev            # web panel, restarts on file changes
+npm run desktop        # desktop window from source
+npm run dist:win       # build release/ProxyPilot-Setup-<version>.exe (run on Windows; elsewhere needs Wine)
+npm run dist:dir       # unpacked app for the current OS in release/
+npm run test:packaged  # drive the built app's window end to end (after dist:win or dist:dir)
 ```
+
+The **ProxyPilot desktop** GitHub Actions workflow (`.github/workflows/proxypilot-desktop.yml`) runs on every push that touches `proxypilot/`. It uses a Windows machine to typecheck, run the tests with real Chrome, build the installer, and run the packaged-app test with visible browser windows. It then uploads the installer.
 
 The end-to-end test needs no internet. It starts fake HTTP and SOCKS5 proxies that require a login and pretend to be in Germany, Japan and Brazil. It then checks that every browser goes through its own proxy and reports the right timezone, languages, CPU and RAM. Set `PROXYPILOT_TEST_BROWSER=/path/to/chrome` to test against a specific browser binary.
 
 ```
+desktop/
+  main.ts         desktop app: runs the engine, shows the panel in a window, asks before quitting
+  build.mjs       bundles the desktop app's code for packaging
+  assets/         app icon
 src/
-  main.ts         entry point: starts the server, opens the panel, handles Ctrl+C
+  main.ts         entry point for `npm start`: starts the server, opens the panel, handles Ctrl+C
   server.ts       local web server: REST API + live updates (Server-Sent Events)
   browsers.ts     launches/closes browsers, opens URLs, tiles windows
+  engine.ts       picks Chrome / Edge / built-in Chromium, downloads Chromium
   bridge.ts       per-profile local proxy that handles upstream protocols and logins
   geo.ts          exit-IP + location lookup through a proxy
   fingerprint.ts  per-profile device traits, language preferences

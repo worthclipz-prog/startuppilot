@@ -170,8 +170,10 @@ code {
   gap: 16px;
   position: sticky;
   top: 84px;
-  max-height: calc(100vh - 100px);
+  /* Top bar + layout padding: keeps the sidebar from making the whole window scroll. */
+  max-height: calc(100vh - 132px);
   overflow-y: auto;
+  scrollbar-width: thin;
 }
 
 .card {
@@ -584,10 +586,6 @@ tbody tr.selected td {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-}
-
-.page-title a {
-  color: inherit;
 }
 
 @keyframes pulse {

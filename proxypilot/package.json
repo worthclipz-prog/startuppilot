@@ -3,6 +3,8 @@
   "version": "0.1.0",
   "private": true,
   "description": "Bulk proxy browser launcher: one isolated browser profile per proxy, launch them all at once and open a website on every one.",
+  "author": "ProxyPilot",
+  "main": "dist/desktop.cjs",
   "type": "module",
   "engines": {
     "node": ">=20.18.1"
@@ -10,20 +12,27 @@
   "scripts": {
     "start": "tsx src/main.ts",
     "dev": "tsx watch src/main.ts",
+    "desktop": "node desktop/build.mjs && electron .",
+    "dist:win": "node desktop/build.mjs && electron-builder --win nsis --publish never",
+    "dist:dir": "node desktop/build.mjs && electron-builder --dir --publish never",
     "test": "node --import tsx --test test/*.test.ts",
+    "test:packaged": "node --import tsx --test test/packaged-app.ts",
     "typecheck": "tsc --noEmit",
     "postinstall": "playwright install chromium"
   },
   "dependencies": {
-    "express": "^5.3.0",
-    "playwright": "^1.64.1",
-    "proxy-chain": "^3.0.1",
-    "tsx": "^4.23.15",
-    "undici": "^7.30.1"
+    "playwright": "^1.64.1"
   },
   "devDependencies": {
     "@types/express": "^5.0.6",
     "@types/node": "^22.20.5",
-    "typescript": "^7.0.2"
+    "electron": "^45.0.0",
+    "electron-builder": "^26.15.3",
+    "esbuild": "^0.28.2",
+    "express": "^5.3.0",
+    "proxy-chain": "^3.0.1",
+    "tsx": "^4.23.15",
+    "typescript": "^7.0.2",
+    "undici": "^7.30.1"
   }
 }

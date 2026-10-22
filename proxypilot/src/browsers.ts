@@ -1,6 +1,7 @@
 import { EventEmitter } from 'node:events';
 import { chromium, type BrowserContext } from 'playwright';
 import { startBridge, type Bridge } from './bridge.ts';
+import { launchOptions } from './engine.ts';
 import { fingerprintInitScript, languagesFor, localeForCountry, writeLanguagePrefs } from './fingerprint.ts';
 import { lookupGeo, ProxyDeadError } from './geo.ts';
 import { errorMessage, mapLimit } from './util.ts';
@@ -69,7 +70,7 @@ export class BrowserManager extends EventEmitter {
       } catch (err) {
         this.launching.delete(id);
         this.slots.delete(id);
-        const error = friendlyLaunchError(err);
+        const error = friendlyLaunchError(err, settings);
         this.setStatus(id, { state: 'error', error });
         return { id, ok: false, error };
       }
@@ -113,7 +114,7 @@ export class BrowserManager extends EventEmitter {
       const locale = settings.matchLanguageToProxy ? localeForCountry(geo.countryCode) : 'en-US';
       await writeLanguagePrefs(userDataDir, languagesFor(locale));
       context = await chromium.launchPersistentContext(userDataDir, {
-        ...engineOptions(settings),
+        ...launchOptions(settings),
         headless: settings.headless,
         // Playwright turns Chromium's sandbox off by default; these windows browse real sites, so keep
         // it on. Chromium refuses to start sandboxed as root on Linux, the one case left without it.
@@ -240,15 +241,14 @@ export function tileRect(slot: number, count: number, screenWidth: number, scree
   };
 }
 
-function engineOptions(settings: Settings): { channel?: string; executablePath?: string } {
-  if (settings.executablePath) return { executablePath: settings.executablePath };
-  return settings.browser === 'chromium' ? {} : { channel: settings.browser };
-}
-
-function friendlyLaunchError(err: unknown): string {
+function friendlyLaunchError(err: unknown, settings: Settings): string {
   const message = errorMessage(err);
-  if (/Executable doesn't exist|is not found at|Chromium distribution .* is not found/i.test(message)) {
-    return 'Browser not installed. Run "npx playwright install chromium", or pick another browser in Settings.';
+  if (/distribution 'chrome' is not found/i.test(message)) return 'Google Chrome is not installed on this computer. Pick another browser in Settings.';
+  if (/distribution 'msedge' is not found/i.test(message)) return 'Microsoft Edge is not installed on this computer. Pick another browser in Settings.';
+  if (/executable doesn't exist/i.test(message)) {
+    return settings.executablePath
+      ? `No browser found at ${settings.executablePath}. Fix the custom browser path in Settings.`
+      : 'Built-in Chromium is not downloaded yet. Download it in Settings, or pick Chrome or Edge.';
   }
   return message;
 }

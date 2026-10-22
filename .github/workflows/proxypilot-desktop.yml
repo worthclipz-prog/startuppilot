@@ -1,0 +1,68 @@
+name: ProxyPilot desktop
+
+on:
+  push:
+    paths:
+      - 'proxypilot/**'
+      - '.github/workflows/proxypilot-desktop.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: proxypilot-desktop-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  windows-installer:
+    name: Windows installer
+    runs-on: windows-latest
+    timeout-minutes: 40
+    defaults:
+      run:
+        working-directory: proxypilot
+    env:
+      # The app uses the runner's Google Chrome; Playwright's own Chromium isn't needed.
+      PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: proxypilot/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Typecheck
+        run: npm run typecheck
+
+      - name: Tests (real Chrome through fake HTTP and SOCKS5 proxies)
+        run: npm test
+
+      - name: Build installer
+        run: npm run dist:win
+
+      - name: Test the packaged app (its window, visible proxy browsers)
+        run: npm run test:packaged
+        env:
+          PROXYPILOT_TEST_HEADED: '1'
+          PROXYPILOT_SCREENSHOT: ${{ github.workspace }}\proxypilot\release\app-window.png
+
+      - name: Upload installer
+        uses: actions/upload-artifact@v4
+        with:
+          name: ProxyPilot-Setup-windows
+          path: proxypilot/release/ProxyPilot-Setup-*.exe
+          if-no-files-found: error
+
+      - name: Upload app screenshot
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-window-screenshot
+          path: proxypilot/release/app-window.png
+          if-no-files-found: ignore

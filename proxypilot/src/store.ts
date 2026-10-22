@@ -6,7 +6,7 @@ import { proxyKey } from './proxy.ts';
 import type { BrowserEngine, Profile, ProxyConfig, Settings } from './types.ts';
 
 export const DEFAULT_SETTINGS: Settings = {
-  browser: 'chromium',
+  browser: 'auto',
   executablePath: '',
   headless: false,
   maxOpenBrowsers: 20,
@@ -19,7 +19,7 @@ export const DEFAULT_SETTINGS: Settings = {
   navigationTimeoutSec: 45,
 };
 
-const ENGINES: BrowserEngine[] = ['chromium', 'chrome', 'msedge'];
+const ENGINES: BrowserEngine[] = ['auto', 'chromium', 'chrome', 'msedge'];
 
 /** Profiles and settings live in plain JSON files under the data directory. */
 export class Store {
@@ -77,7 +77,8 @@ export class Store {
     const doomed = new Set(ids);
     const before = this.profiles.length;
     this.profiles = this.profiles.filter((p) => !doomed.has(p.id));
-    await Promise.all([...doomed].map((id) => fs.rm(this.userDataDir(id), { recursive: true, force: true })));
+    // Retries cover Windows, where a just-closed browser can hold its files for a moment.
+    await Promise.all([...doomed].map((id) => fs.rm(this.userDataDir(id), { recursive: true, force: true, maxRetries: 5, retryDelay: 200 })));
     await this.saveProfiles();
     return before - this.profiles.length;
   }

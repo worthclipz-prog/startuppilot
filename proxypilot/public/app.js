@@ -3,6 +3,7 @@ const $ = (selector) => document.querySelector(selector);
 const state = {
   profiles: [],
   settings: null,
+  engine: null,
   selected: new Set(),
   filter: 'all',
   search: '',
@@ -25,6 +26,7 @@ async function loadState() {
   const data = await api('GET', '/api/state');
   state.profiles = data.profiles;
   state.settings = data.settings;
+  state.engine = data.engine;
   pruneSelection();
   fillSettings();
   render();
@@ -59,12 +61,16 @@ function connect() {
     state.settings = JSON.parse(e.data);
     if (!$('#settingsForm').contains(document.activeElement)) fillSettings();
   });
+  events.addEventListener('engine', (e) => {
+    state.engine = JSON.parse(e.data);
+    describeEngine();
+  });
 }
 
 function setConnected(live) {
   const el = $('#conn');
   el.classList.toggle('live', live);
-  el.textContent = live ? 'Engine running' : 'Engine offline: is "npm start" still running?';
+  el.textContent = live ? 'Engine running' : 'Engine offline: restart ProxyPilot';
 }
 
 // ---------- rendering ----------
@@ -192,9 +198,8 @@ function browserCell(p) {
   if (run.state === 'launching') return '<span class="pill busy">Launching…</span>';
   if (run.state === 'error') return `<span class="pill bad">Failed</span><div class="err">${esc(run.error)}</div>`;
   if (run.state !== 'running') return '<span class="pill idle">Closed</span>';
-  const page = run.url
-    ? `<div class="page-title sub"><a href="${esc(run.url)}" target="_blank" rel="noreferrer" title="${esc(run.url)}">${esc(run.title || run.url)}</a></div>`
-    : '';
+  // Plain text on purpose: a link would open the site in this (unproxied) browser and reveal the real IP.
+  const page = run.url ? `<div class="page-title sub" title="${esc(run.url)}">${esc(run.title || run.url)}</div>` : '';
   return `<span class="pill ok">Open</span>${page}${run.error ? `<div class="err">${esc(run.error)}</div>` : ''}`;
 }
 
@@ -331,7 +336,7 @@ $('#rows').addEventListener('click', async (e) => {
   const id = row.dataset.id;
   const button = e.target.closest('button[data-action]');
   if (!button) {
-    if (e.target.closest('a, input')) return;
+    if (e.target.closest('input')) return;
     toggleSelected(id, !state.selected.has(id));
     return;
   }
@@ -387,7 +392,50 @@ function fillSettings() {
     if (field.type === 'checkbox') field.checked = value;
     else field.value = value;
   }
+  describeEngine();
 }
+
+const ENGINE_NAMES = { chrome: 'Google Chrome', msedge: 'Microsoft Edge', chromium: 'built-in Chromium', custom: 'the browser at the custom path' };
+
+/** Says which browser profiles will open in, for the choice currently shown in the form. */
+function describeEngine() {
+  const engine = state.engine;
+  if (!engine) return;
+  const form = $('#settingsForm');
+  const choice = form.elements.namedItem('browser').value;
+  const resolved = form.elements.namedItem('executablePath').value.trim()
+    ? 'custom'
+    : choice !== 'auto'
+      ? choice
+      : engine.chromeInstalled
+        ? 'chrome'
+        : engine.edgeInstalled
+          ? 'msedge'
+          : 'chromium';
+  const installed = { chrome: engine.chromeInstalled, msedge: engine.edgeInstalled, chromium: engine.chromiumInstalled, custom: true }[resolved];
+  const name = ENGINE_NAMES[resolved];
+  $('#engineInfo').textContent = installed
+    ? `Profiles open in ${name}.`
+    : `${name[0].toUpperCase()}${name.slice(1)} isn't installed on this computer. ${resolved === 'chromium' ? 'Download it below, or pick Chrome or Edge.' : 'Pick another browser.'}`;
+  const button = $('#installChromium');
+  button.hidden = !(engine.installingChromium || (resolved === 'chromium' && !engine.chromiumInstalled));
+  button.disabled = engine.installingChromium;
+  button.textContent = engine.installingChromium ? 'Downloading Chromium…' : 'Download built-in Chromium (about 150 MB)';
+}
+
+$('#settingsForm').addEventListener('input', (e) => {
+  if (e.target.name === 'browser' || e.target.name === 'executablePath') describeEngine();
+});
+
+$('#installChromium').addEventListener('click', async () => {
+  try {
+    state.engine = await api('POST', '/api/engine/install-chromium');
+    toast('Built-in Chromium is ready.', 'ok');
+  } catch (err) {
+    toast(err.message, 'bad');
+  }
+  describeEngine();
+});
 
 $('#settingsForm').addEventListener('submit', (e) => {
   e.preventDefault();

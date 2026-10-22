@@ -4,6 +4,7 @@ import type { AddressInfo } from 'node:net';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { BrowserManager } from './browsers.ts';
+import { engineInfo, installChromium } from './engine.ts';
 import { checkProxy } from './geo.ts';
 import { parseProxyList } from './proxy.ts';
 import { Store } from './store.ts';
@@ -37,6 +38,8 @@ export async function startServer(options: { port: number; dataDir: string }): P
   const sendProfiles = () => broadcast('profiles', store.profiles.map(view));
   manager.on('status', (id: string, status) => broadcast('status', { id, status }));
   manager.on('profile', (p: Profile) => broadcast('profile', view(p)));
+  let installingChromium = false;
+  const engineState = () => ({ ...engineInfo(store.settings), installingChromium });
 
   /** Explicit ids from the request, or every profile (skipping dead proxies unless asked). */
   const targetIds = (raw: unknown, includeDead = false): string[] => {
@@ -68,7 +71,7 @@ export async function startServer(options: { port: number; dataDir: string }): P
   app.use(express.static(PUBLIC_DIR));
 
   app.get('/api/state', (_req, res) => {
-    res.json({ settings: store.settings, profiles: store.profiles.map(view) });
+    res.json({ settings: store.settings, engine: engineState(), profiles: store.profiles.map(view) });
   });
 
   app.get('/api/events', (req, res) => {
@@ -137,7 +140,21 @@ export async function startServer(options: { port: number; dataDir: string }): P
     const settings = store.updateSettings(req.body ?? {});
     await store.saveSettings();
     broadcast('settings', settings);
+    broadcast('engine', engineState());
     res.json(settings);
+  });
+
+  app.post('/api/engine/install-chromium', async (_req, res) => {
+    if (installingChromium) throw new HttpError(409, 'Chromium is already downloading');
+    installingChromium = true;
+    broadcast('engine', engineState());
+    try {
+      await installChromium();
+    } finally {
+      installingChromium = false;
+      broadcast('engine', engineState());
+    }
+    res.json(engineState());
   });
 
   app.use('/api', (_req, res) => {

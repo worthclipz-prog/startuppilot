@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>ProxyPilot</title>
-    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%234f46e5'/><path d='M9 10h14M9 16h14M9 22h9' stroke='white' stroke-width='3' stroke-linecap='round'/></svg>" />
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 1024 1024'><defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'><stop offset='0' stop-color='%234f46e5'/><stop offset='1' stop-color='%2306b6d4'/></linearGradient></defs><rect x='48' y='48' width='928' height='928' rx='208' fill='url(%23g)'/><circle cx='512' cy='512' r='248' fill='none' stroke='white' stroke-width='80'/><circle cx='512' cy='512' r='76' fill='white'/></svg>" />
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
@@ -63,11 +63,14 @@
             <label>
               Browser
               <select name="browser">
+                <option value="auto">Automatic (Chrome, else Edge)</option>
+                <option value="chrome">Google Chrome</option>
+                <option value="msedge">Microsoft Edge</option>
                 <option value="chromium">Built-in Chromium</option>
-                <option value="chrome">Google Chrome (installed)</option>
-                <option value="msedge">Microsoft Edge (installed)</option>
               </select>
             </label>
+            <p class="hint" id="engineInfo"></p>
+            <button class="btn block" type="button" id="installChromium" hidden>Download built-in Chromium (about 150 MB)</button>
             <label>
               Custom browser path <span class="muted">(optional)</span>
               <input name="executablePath" type="text" placeholder="C:\Program Files\Google\Chrome\Application\chrome.exe" />
