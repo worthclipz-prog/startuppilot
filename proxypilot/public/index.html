@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>ProxyPilot</title>
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'><rect width='32' height='32' rx='8' fill='%234f46e5'/><path d='M9 10h14M9 16h14M9 22h9' stroke='white' stroke-width='3' stroke-linecap='round'/></svg>" />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <span class="logo" aria-hidden="true"></span>
+        <div>
+          <h1>ProxyPilot</h1>
+          <p>One isolated browser per proxy</p>
+        </div>
+      </div>
+      <div class="stats" id="stats"></div>
+      <span class="conn" id="conn" title="Connection to the ProxyPilot engine">Connecting…</span>
+    </header>
+
+    <main class="layout">
+      <aside class="sidebar">
+        <section class="card">
+          <h2><span class="step">1</span> Add proxies</h2>
+          <textarea id="proxyText" rows="8" spellcheck="false" placeholder="One proxy per line, e.g.&#10;185.10.20.30:8080&#10;185.10.20.31:8080:user:pass&#10;user:pass@gate.provider.com:7000&#10;socks5://user:pass@10.0.0.5:1080"></textarea>
+          <div class="row">
+            <label class="file-btn">
+              <input type="file" id="proxyFile" accept=".txt,text/plain" />
+              Upload .txt
+            </label>
+            <label class="inline">
+              Type
+              <select id="proxyProtocol">
+                <option value="http">HTTP</option>
+                <option value="https">HTTPS</option>
+                <option value="socks5">SOCKS5</option>
+                <option value="socks4">SOCKS4</option>
+              </select>
+            </label>
+          </div>
+          <p class="hint">"Type" applies to lines without a <code>socks5://</code> or <code>http://</code> prefix.</p>
+          <label class="check"><input type="checkbox" id="checkAfterImport" checked /> Test proxies after import</label>
+          <button class="btn primary block" id="importBtn">Import proxies</button>
+          <p class="hint" id="importResult" role="status"></p>
+        </section>
+
+        <section class="card">
+          <h2><span class="step">2</span> Open a website on every proxy</h2>
+          <form id="openForm" class="url-form">
+            <input type="text" id="url" placeholder="example.com" autocomplete="url" inputmode="url" />
+            <button class="btn primary block" id="openBtn" type="submit">Open on all</button>
+          </form>
+          <p class="target" id="openTarget"></p>
+          <label class="check"><input type="checkbox" id="launchClosed" checked /> Launch browsers that aren't open yet</label>
+          <label class="check"><input type="checkbox" id="newTab" /> Open in a new tab instead of the current one</label>
+        </section>
+
+        <details class="card settings" id="settingsCard">
+          <summary><h2>Settings</h2></summary>
+          <form id="settingsForm">
+            <label>
+              Browser
+              <select name="browser">
+                <option value="chromium">Built-in Chromium</option>
+                <option value="chrome">Google Chrome (installed)</option>
+                <option value="msedge">Microsoft Edge (installed)</option>
+              </select>
+            </label>
+            <label>
+              Custom browser path <span class="muted">(optional)</span>
+              <input name="executablePath" type="text" placeholder="C:\Program Files\Google\Chrome\Application\chrome.exe" />
+            </label>
+            <div class="grid2">
+              <label>Max open browsers <input name="maxOpenBrowsers" type="number" min="1" max="500" /></label>
+              <label>Launch at once <input name="launchConcurrency" type="number" min="1" max="20" /></label>
+              <label>Screen width <input name="screenWidth" type="number" min="640" /></label>
+              <label>Screen height <input name="screenHeight" type="number" min="480" /></label>
+              <label>Page timeout (s) <input name="navigationTimeoutSec" type="number" min="5" max="300" /></label>
+            </div>
+            <label class="check"><input type="checkbox" name="tileWindows" /> Arrange windows in a grid</label>
+            <label class="check"><input type="checkbox" name="matchLanguageToProxy" /> Browser language follows proxy country</label>
+            <label class="check"><input type="checkbox" name="blockWebRtcLeaks" /> Block WebRTC real-IP leaks</label>
+            <label class="check"><input type="checkbox" name="headless" /> Hidden mode (no windows)</label>
+            <p class="hint">Timezone and location always follow each proxy's exit IP. Changes apply to browsers launched after saving.</p>
+            <button class="btn block" type="submit">Save settings</button>
+          </form>
+        </details>
+      </aside>
+
+      <section class="content">
+        <div class="toolbar">
+          <div class="actions">
+            <button class="btn" data-bulk="launch">Launch</button>
+            <button class="btn" data-bulk="close">Close</button>
+            <button class="btn" data-bulk="check">Test proxies</button>
+            <button class="btn danger" data-bulk="delete">Delete</button>
+            <span class="target" id="bulkTarget"></span>
+          </div>
+          <div class="filters">
+            <input type="search" id="search" placeholder="Search IP, country, host…" />
+            <div class="segmented" id="filter" role="tablist">
+              <button data-filter="all" class="active">All</button>
+              <button data-filter="open">Open</button>
+              <button data-filter="ok">Working</button>
+              <button data-filter="dead">Dead</button>
+            </div>
+          </div>
+        </div>
+
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th class="col-check"><input type="checkbox" id="selectAll" aria-label="Select all shown" /></th>
+                <th>Profile</th>
+                <th>Proxy</th>
+                <th>Exit IP &amp; location</th>
+                <th>Browser</th>
+                <th class="col-actions"></th>
+              </tr>
+            </thead>
+            <tbody id="rows"></tbody>
+          </table>
+          <div class="empty" id="empty" hidden>
+            <p><strong>No profiles yet.</strong></p>
+            <p>Paste or upload your proxies on the left. Each proxy becomes its own browser profile with separate cookies, timezone and fingerprint.</p>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <div class="toasts" id="toasts" aria-live="polite"></div>
+    <script type="module" src="app.js"></script>
+  </body>
+</html>
